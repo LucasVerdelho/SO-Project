@@ -3,19 +3,13 @@
 #include <string.h>
 #include <sys/types.h>
 #include <sys/stat.h>
+#include <sys/wait.h>
+#include <sys/time.h>
 #include <fcntl.h>
 #include <unistd.h>
-#include <sys/time.h>
 
-#define TRACER_FIFO_PATH "/tmp/tracer_fifo"
-#define MONITOR_FIFO_PATH "/tmp/monitor_fifo"
-
-typedef struct
-{
-    pid_t pid;
-    char program_name[256];
-    struct timeval start_time;
-} ExecutionInfo;
+#define TRACER_FIFO_PATH "../tmp/tracer_fifo"
+#define MONITOR_FIFO_PATH "../tmp/monitor_fifo"
 
 void execute_program(char *program_name, char **program_args)
 {
@@ -37,27 +31,40 @@ void execute_program(char *program_name, char **program_args)
         exit(1);
     }
 
-    // Prepare execution info
-    ExecutionInfo exec_info;
-    exec_info.pid = getpid();
-    strcpy(exec_info.program_name, program_name);
-    gettimeofday(&exec_info.start_time, NULL);
+    int pid = getpid();
 
-    // Send execution info to the server
-    write(fd, &exec_info, sizeof(ExecutionInfo));
+    // Notify the server that a program is about to be executed
+    char buffer[1024];
+    sprintf(buffer, "%d;%s", pid, program_name);
+    printf("buffer: %s\n", buffer);
+    write(fd, buffer, strlen(buffer));
 
     // Notify the user of the program's PID
-    printf("Executing program with PID: %d\n", exec_info.pid);
+    printf("Executing program with PID: %d\n", pid);
+
+    if (fork() == 0)
+    {
+        // Execute the program and check for errors
+        if (execvp(program_name, program_args) == -1)
+        {
+            perror("Failed to execute program");
+            sprintf(buffer, "%d;finished", pid);
+            write(fd, buffer, strlen(buffer));
+            exit(1);
+        }
+    }
+    else
+    {
+        wait(NULL);
+
+        // Write to the FIFO again to notify the server that the program has terminated
+        printf("Program %d terminated\n", pid);
+        sprintf(buffer, "%d;finished", pid);
+        write(fd, buffer, strlen(buffer));
+    }
 
     // Close FIFO
     close(fd);
-
-    // Execute the program and check for errors
-    if (execvp(program_name, program_args) == -1)
-    {
-        perror("Failed to execute program");
-        exit(1);
-    }
 }
 
 void query_running_programs()
@@ -110,7 +117,7 @@ int main(int argc, char **argv)
     // Get the option selected
     char *option = argv[1];
 
-    // If the option is "-u" then execute the program(s) 
+    // If the option is "-u" then execute the program(s)
     if (strcmp(option, "-u") == 0)
     {
         if (argc < 3)
