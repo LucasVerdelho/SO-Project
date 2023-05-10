@@ -7,73 +7,131 @@
 #include <unistd.h>
 #include <sys/time.h>
 
-#define MAX_ARGS 10
+#define TRACER_FIFO_PATH "/tmp/tracer_fifo"
+#define MONITOR_FIFO_PATH "/tmp/monitor_fifo"
 
-int main(int argc, char *argv[])
+typedef struct
 {
-    int pipe_fd;
-    char *pipe_name = "my_pipe";
-    char *args[MAX_ARGS];
-    char buf[256];
-    int i;
     pid_t pid;
-    struct timeval start_time, end_time;
-    long int elapsed_time;
+    char program_name[256];
+    struct timeval start_time;
+} ExecutionInfo;
 
+void execute_program(char *program_name, char **program_args)
+{
+    // Check if fifo on TRACER_FIFO_PATH exists and if not create it
+    if (access(TRACER_FIFO_PATH, F_OK) == -1)
+    {
+        if (mkfifo(TRACER_FIFO_PATH, 0666) == -1)
+        {
+            perror("Failed to create FIFO");
+            exit(1);
+        }
+    }
+
+    // Open FIFO for writing
+    int fd = open(TRACER_FIFO_PATH, O_WRONLY);
+    if (fd == -1)
+    {
+        perror("Failed to open FIFO");
+        exit(1);
+    }
+
+    // Prepare execution info
+    ExecutionInfo exec_info;
+    exec_info.pid = getpid();
+    strcpy(exec_info.program_name, program_name);
+    gettimeofday(&exec_info.start_time, NULL);
+
+    // Send execution info to the server
+    write(fd, &exec_info, sizeof(ExecutionInfo));
+
+    // Notify the user of the program's PID
+    printf("Executing program with PID: %d\n", exec_info.pid);
+
+    // Close FIFO
+    close(fd);
+
+    // Execute the program and check for errors
+    if (execvp(program_name, program_args) == -1)
+    {
+        perror("Failed to execute program");
+        exit(1);
+    }
+}
+
+void query_running_programs()
+{
+    // Open FIFO for writing
+    int fd = open(TRACER_FIFO_PATH, O_WRONLY);
+    if (fd == -1)
+    {
+        perror("Failed to open FIFO");
+        exit(1);
+    }
+
+    // Send the query request to the server
+    write(fd, "query", strlen("query"));
+
+    // Close FIFO
+    close(fd);
+
+    // Open FIFO for reading
+    fd = open(MONITOR_FIFO_PATH, O_RDONLY);
+    if (fd == -1)
+    {
+        perror("Failed to open FIFO");
+        exit(1);
+    }
+
+    // Read and print the response from the server
+    char buffer[1024];
+    ssize_t num_bytes;
+    while ((num_bytes = read(fd, buffer, sizeof(buffer))) > 0)
+    {
+        write(STDOUT_FILENO, buffer, num_bytes);
+    }
+
+    // Close FIFO
+    close(fd);
+}
+
+int main(int argc, char **argv)
+{
+    // Check number of arguments passed to determine the option selected
+
+    // Invalid number of arguments
     if (argc < 2)
     {
-        printf("Usage: %s [-u] program_name [arguments...]\n", argv[0]);
+        printf("Correct Usage: %s <option> [<args>...]\n", argv[0]);
         exit(1);
     }
 
-    if (strcmp(argv[1], "-u") != 0)
-    {
-        printf("Error: Invalid option %s\n", argv[1]);
-        exit(1);
-    }
+    // Get the option selected
+    char *option = argv[1];
 
-    for (i = 2; i < argc && i - 2 < MAX_ARGS; i++)
+    // If the option is "-u" then execute the program(s)
+    if (strcmp(option, "-u") == 0)
     {
-        args[i - 2] = argv[i];
-    }
-    args[i - 2] = NULL;
+        if (argc < 3)
+        {
+            printf("Program name is missing\n");
+            exit(1);
+        }
 
-    gettimeofday(&start_time, NULL);
+        char *program_name = argv[2];
+        char **program_args = &argv[2];
 
-    pid = fork();
-    if (pid == -1)
-    {
-        printf("Error: Fork failed\n");
-        exit(1);
+        execute_program(program_name, program_args);
     }
-    else if (pid == 0)
+    else if (strcmp(option, "-s") == 0)
     {
-        execvp(argv[2], args);
-        printf("Error: Failed to execute program %s\n", argv[2]);
-        exit(1);
+        query_running_programs();
     }
     else
     {
-        printf("PID of program %s is %d\n", argv[2], pid);
-
-        gettimeofday(&end_time, NULL);
-        elapsed_time = (end_time.tv_sec - start_time.tv_sec) * 1000 + (end_time.tv_usec - start_time.tv_usec) / 1000;
-
-        pipe_fd = open(pipe_name, O_WRONLY);
-        if (pipe_fd == -1)
-        {
-            printf("Error: Failed to open pipe %s\n", pipe_name);
-            exit(1);
-        }
-
-        sprintf(buf, "execute %d %s %ld\n", pid, argv[2], elapsed_time);
-        if (write(pipe_fd, buf, strlen(buf)) == -1)
-        {
-            printf("Error: Failed to write to pipe\n");
-            exit(1);
-        }
-
-        close(pipe_fd);
+        printf("Invalid option\n");
+        exit(1);
     }
 
     return 0;
