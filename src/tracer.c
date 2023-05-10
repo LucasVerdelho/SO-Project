@@ -9,7 +9,6 @@
 #include <unistd.h>
 
 #define TRACER_FIFO_PATH "../tmp/tracer_fifo"
-#define MONITOR_FIFO_PATH "../tmp/monitor_fifo"
 
 void execute_program(char *program_name, char **program_args)
 {
