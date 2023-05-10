@@ -110,7 +110,7 @@ int main(int argc, char **argv)
     // Get the option selected
     char *option = argv[1];
 
-    // If the option is "-u" then execute the program(s)
+    // If the option is "-u" then execute the program(s) 
     if (strcmp(option, "-u") == 0)
     {
         if (argc < 3)

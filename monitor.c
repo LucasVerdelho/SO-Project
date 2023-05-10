@@ -17,6 +17,7 @@ typedef struct
     struct timeval start_time;
 } ExecutionInfo;
 
+
 void handle_execution_info(ExecutionInfo *exec_info)
 {
     // Calculate execution time
@@ -36,6 +37,17 @@ void handle_execution_info(ExecutionInfo *exec_info)
 
 void handle_query_request()
 {
+
+    // Check if fifo on MONITOR_FIFO_PATH exists and if not create it
+    if (access(MONITOR_FIFO_PATH, F_OK) == -1)
+    {
+        if (mkfifo(MONITOR_FIFO_PATH, 0666) == -1)
+        {
+            perror("Failed to create FIFO");
+            exit(1);
+        }
+    }
+
     // Read the execution information from the file or data structure
     // ...
 
@@ -53,6 +65,8 @@ void handle_query_request()
     }
 
     // Send the response to the client
+
+
     write(fd, response, strlen(response));
 
     // Close FIFO
