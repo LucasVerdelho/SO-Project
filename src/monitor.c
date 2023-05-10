@@ -3,55 +3,71 @@
 #include <string.h>
 #include <sys/types.h>
 #include <sys/stat.h>
-#include <sys/wait.h>
 #include <sys/time.h>
 #include <fcntl.h>
 #include <unistd.h>
 
 #define TRACER_FIFO_PATH "../tmp/tracer_fifo"
-#define MONITOR_FIFO_PATH "../tmp/monitor_fifo"
+#define MAX_ENTRIES 256
 
-typedef struct ExecutionInfo
+typedef struct
 {
-    pid_t pid;
-    char program_name[256];
+    int pid;
+    char command[256];
     struct timeval start_time;
     struct timeval end_time;
-    struct ExecutionInfo *next;
 } ExecutionInfo;
 
-ExecutionInfo *execution_list = NULL; // Linked list to store ExecutionInfo
+ExecutionInfo executionInfos[MAX_ENTRIES];
+int numEntries = 0;
 
-void handle_query_request()
+void insert_entry(int pid, const char *command)
 {
-    // Prepare the response based on the execution information in the linked list
-    char response[1024];
-    response[0] = '\0';
-
-    ExecutionInfo *curr = execution_list;
-    while (curr != NULL)
+    if (numEntries >= MAX_ENTRIES)
     {
-        // Format the response based on the execution information
-        char entry[256];
-        snprintf(entry, sizeof(entry), "PID: %d, Program: %s\n", curr->pid, curr->program_name);
-        strncat(response, entry, sizeof(response) - strlen(response) - 1);
-
-        curr = curr->next;
+        printf("Maximum number of entries reached.\n");
+        return;
     }
 
-    // Open FIFO for writing
-    int fd = open(MONITOR_FIFO_PATH, O_WRONLY);
-    if (fd == -1)
+    executionInfos[numEntries].pid = pid;
+    strncpy(executionInfos[numEntries].command, command, sizeof(executionInfos[numEntries].command));
+    gettimeofday(&executionInfos[numEntries].start_time, NULL);
+    numEntries++;
+}
+
+void update_entry(int pid, int status)
+{
+    for (int i = 0; i < numEntries; i++)
     {
-        perror("Failed to open FIFO");
-        exit(1);
+        if (executionInfos[i].pid == pid)
+        {
+            if (status == 0)
+            {
+                printf("Process with PID %d exited with status 0\n", pid);
+                gettimeofday(&executionInfos[i].end_time, NULL);
+            }
+            else
+            {
+                printf("Process with PID %d exited with non-zero status\n", pid);
+            }
+            return;
+        }
     }
 
-    // Send the response to the client
-    write(fd, response, strlen(response));
+    printf("Entry not found for PID: %d\n", pid);
+}
 
-    // Close FIFO
-    close(fd);
+void print_entries()
+{
+    for (int i = 0; i < numEntries; i++)
+    {
+        long start_ms = (executionInfos[i].start_time.tv_sec * 1000) + (executionInfos[i].start_time.tv_usec / 1000);
+        long end_ms = (executionInfos[i].end_time.tv_sec * 1000) + (executionInfos[i].end_time.tv_usec / 1000);
+        long duration_ms = end_ms - start_ms;
+
+        printf("\nPID: %d, Command: %s\n", executionInfos[i].pid, executionInfos[i].command);
+        printf("Duration: %ld milliseconds\n", duration_ms);
+    }
 }
 
 int main()
@@ -68,7 +84,7 @@ int main()
 
     // Open FIFO for reading
     int tracer_fd;
-    if (tracer_fd = open(TRACER_FIFO_PATH, O_RDWR) == -1)
+    if ((tracer_fd = open(TRACER_FIFO_PATH, O_RDWR)) == -1)
     {
         perror("Failed to open FIFO");
         exit(1);
@@ -76,10 +92,11 @@ int main()
 
     while (1)
     {
+        printf("\nWaiting for client request...\n\n");
 
         // Read the client's request
         // The structure of a client request is as follows:
-        // proccess ID;program name/status(finish signal)
+        // process ID;program name/status(finish signal)
         char buffer[1024];
         ssize_t num_bytes = read(tracer_fd, buffer, sizeof(buffer));
         if (num_bytes == -1)
@@ -88,16 +105,31 @@ int main()
             exit(1);
         }
 
-        // Handle the client's request
-        if (strcmp(buffer, "query") == 0)
+        printf("Received client request: %s\n", buffer);
+
+        // Parse the client's request
+        int pid;
+        char info[256];
+        sscanf(buffer, "%d;%s", &pid, info);
+
+        printf("PID: %d, Info: %s", pid, info);
+
+        if (strcmp(info, "finished") == 0)
         {
-            handle_query_request();
+            printf("Process with PID %d finished\n", pid);
+            update_entry(pid, 0);
+        }
+        else if (strcmp(info, "status") == 0)
+        {
+            print_entries();
         }
         else
         {
-            ExecutionInfo *exec_info = (ExecutionInfo *)buffer;
-            // handle_execution_info(exec_info);
+            printf("Process with PID %d started\n", pid);
+            insert_entry(pid, info);
         }
+        // Reset the buffer
+        memset(buffer, 0, sizeof(buffer));
     }
 
     // Close FIFO

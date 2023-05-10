@@ -35,8 +35,8 @@ void execute_program(char *program_name, char **program_args)
 
     // Notify the server that a program is about to be executed
     char buffer[1024];
+    memset(buffer, 0, sizeof(buffer)); // Clear the buffer
     sprintf(buffer, "%d;%s", pid, program_name);
-    printf("buffer: %s\n", buffer);
     write(fd, buffer, strlen(buffer));
 
     // Notify the user of the program's PID
@@ -48,6 +48,7 @@ void execute_program(char *program_name, char **program_args)
         if (execvp(program_name, program_args) == -1)
         {
             perror("Failed to execute program");
+            memset(buffer, 0, sizeof(buffer)); // Clear the buffer
             sprintf(buffer, "%d;finished", pid);
             write(fd, buffer, strlen(buffer));
             exit(1);
@@ -59,6 +60,7 @@ void execute_program(char *program_name, char **program_args)
 
         // Write to the FIFO again to notify the server that the program has terminated
         printf("Program %d terminated\n", pid);
+        memset(buffer, 0, sizeof(buffer)); // Clear the buffer
         sprintf(buffer, "%d;finished", pid);
         write(fd, buffer, strlen(buffer));
     }
@@ -69,6 +71,7 @@ void execute_program(char *program_name, char **program_args)
 
 void query_running_programs()
 {
+
     // Open FIFO for writing
     int fd = open(TRACER_FIFO_PATH, O_WRONLY);
     if (fd == -1)
@@ -77,30 +80,35 @@ void query_running_programs()
         exit(1);
     }
 
-    // Send the query request to the server
-    write(fd, "query", strlen("query"));
+    int pid = getpid();
 
-    // Close FIFO
-    close(fd);
-
-    // Open FIFO for reading
-    fd = open(MONITOR_FIFO_PATH, O_RDONLY);
-    if (fd == -1)
-    {
-        perror("Failed to open FIFO");
-        exit(1);
-    }
-
-    // Read and print the response from the server
     char buffer[1024];
-    ssize_t num_bytes;
-    while ((num_bytes = read(fd, buffer, sizeof(buffer))) > 0)
-    {
-        write(STDOUT_FILENO, buffer, num_bytes);
-    }
-
-    // Close FIFO
+    memset(buffer, 0, sizeof(buffer)); // Clear the buffer
+    sprintf(buffer, "%d;status", pid);
+    write(fd, buffer, strlen(buffer));
     close(fd);
+
+    sleep(3);
+    // Close FIFO
+
+    // // Open FIFO for reading
+    // fd = open(TRACER_FIFO_PATH, O_RDONLY);
+    // if (fd == -1)
+    // {
+    //     perror("Failed to open FIFO");
+    //     exit(1);
+    // }
+
+    // // Read and print the response from the server
+    // char buffer[1024];
+    // ssize_t num_bytes;
+    // while ((num_bytes = read(fd, buffer, sizeof(buffer))) > 0)
+    // {
+    //     write(STDOUT_FILENO, buffer, num_bytes);
+    // }
+
+    // // Close FIFO
+    // close(fd);
 }
 
 int main(int argc, char **argv)
