@@ -66,6 +66,17 @@ void print_entries()
         long end_ms = (executionInfos[i].end_time.tv_sec * 1000) + (executionInfos[i].end_time.tv_usec / 1000);
         long duration_ms = end_ms - start_ms;
 
+
+        // Check if monitor Fifo exists, else create it
+        if (access(MONITOR_FIFO_PATH, F_OK) == -1)
+        {
+            if (mkfifo(MONITOR_FIFO_PATH, 0666) == -1)
+            {
+                perror("Failed to create FIFO");
+                exit(1);
+            }
+        }
+
         // Open the monitor FIFO for writing
         int monitor_fd = open(MONITOR_FIFO_PATH, O_WRONLY);
         if (monitor_fd == -1)

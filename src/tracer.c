@@ -155,16 +155,13 @@ int main(int argc, char **argv)
     while (1)
     {
         char buffer[1024];
-        memset(buffer, 0, sizeof(buffer)); // Clear the buffer
+        memset(buffer, '\0', sizeof(buffer)); // Clear the buffer
         printf("Enter command:\n");
         fgets(buffer, sizeof(buffer), stdin);
 
-        // Remove the newline character from the end of the string
-        buffer[strlen(buffer) - 1] = '\0';
-
         // Split the string into tokens
         char *token = strtok(buffer, " ");
-
+    
         // If the token is NULL then the user entered an empty string
         if (token == NULL)
         {
