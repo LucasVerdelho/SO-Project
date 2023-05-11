@@ -8,6 +8,7 @@
 #include <unistd.h>
 
 #define TRACER_FIFO_PATH "../tmp/tracer_fifo"
+#define MONITOR_FIFO_PATH "../tmp/monitor_fifo"
 #define MAX_ENTRIES 256
 
 typedef struct
@@ -64,6 +65,20 @@ void print_entries()
         long start_ms = (executionInfos[i].start_time.tv_sec * 1000) + (executionInfos[i].start_time.tv_usec / 1000);
         long end_ms = (executionInfos[i].end_time.tv_sec * 1000) + (executionInfos[i].end_time.tv_usec / 1000);
         long duration_ms = end_ms - start_ms;
+
+        // Open the monitor FIFO for writing
+        int monitor_fd = open(MONITOR_FIFO_PATH, O_WRONLY);
+        if (monitor_fd == -1)
+        {
+            perror("Failed to open FIFO");
+            exit(1);
+        }
+
+        // Notify the client program of each program's execution info
+        char buffer[1024];
+        sprintf(buffer, "%d;%s;%ld", executionInfos[i].pid, executionInfos[i].command, duration_ms);
+        write(monitor_fd, buffer, strlen(buffer));
+        memset(buffer, 0, sizeof(buffer)); // Clear the buffer
 
         printf("\nPID: %d, Command: %s\n", executionInfos[i].pid, executionInfos[i].command);
         printf("Duration: %ld milliseconds\n", duration_ms);
