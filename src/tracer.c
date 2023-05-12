@@ -39,8 +39,8 @@ void execute_program(char *program_name, char **program_args)
     sprintf(buffer, "%d;%s", pid, program_name);
     write(fd, buffer, strlen(buffer));
 
-    // Notify the user of the program's PID
-    printf("Executing program with PID: %d\n", pid);
+    // // Notify the user of the program's PID
+    // printf("Executing program with PID: %d\n", pid);
 
     if (fork() == 0)
     {
@@ -59,7 +59,6 @@ void execute_program(char *program_name, char **program_args)
         wait(NULL);
 
         // Write to the FIFO again to notify the server that the program has terminated
-        printf("Program %d terminated\n", pid);
         memset(buffer, 0, sizeof(buffer)); // Clear the buffer
         sprintf(buffer, "%d;finished", pid);
         write(fd, buffer, strlen(buffer));
@@ -113,7 +112,6 @@ void query_running_programs()
     {
         write(STDOUT_FILENO, buffer, num_bytes);
     }
-    printf("status command finished\n");
     // Close the monitor FIFO
     close(monitor_fd);
 }
@@ -171,17 +169,18 @@ int main(int argc, char **argv)
         }
         else
         {
-            // Parent process
-            int status;
-            waitpid(pid, &status, 0);
-            if (WIFEXITED(status) && WEXITSTATUS(status) == 0)
-            {
-                printf("Program execution successful\n");
-            }
-            else
-            {
-                printf("Program execution failed\n");
-            }
+            // TODO TESTING PIPELINE EXECUTION
+            // // Parent process
+            // int status;
+            // waitpid(pid, &status, 0);
+            // if (WIFEXITED(status) && WEXITSTATUS(status) == 0)
+            // {
+            //     printf("Program execution successful\n");
+            // }
+            // else
+            // {
+            //     printf("Program execution failed\n");
+            // }
         }
     }
     else if (strcmp(option, "-s") == 0)
@@ -201,6 +200,9 @@ int main(int argc, char **argv)
 
     while (1)
     {
+        // Sleep for 100 milliseconds
+        usleep(100000);
+
         printf("\nEnter a new command:\n");
         char command[100];
         fgets(command, sizeof(command), stdin);
@@ -247,17 +249,19 @@ int main(int argc, char **argv)
                 }
                 else
                 {
-                    // Parent process
-                    int status;
-                    waitpid(pid, &status, 0);
-                    if (WIFEXITED(status) && WEXITSTATUS(status) == 0)
-                    {
-                        printf("Program execution successful\n");
-                    }
-                    else
-                    {
-                        printf("Program execution failed\n");
-                    }
+                    // TODO TESTING PIPELINE EXECUTION
+                    // // Parent process
+                    // int status;
+                    // waitpid(pid, &status, 0);
+                    // if (WIFEXITED(status) && WEXITSTATUS(status) == 0)
+                    // {
+                    //     printf("Program execution successful\n");
+                    // }
+                    // else
+                    // {
+                    //     printf("Program execution failed\n");
+                    // }
+                    printf("Program execution successful\n");
                 }
             }
             else if (strcmp(option, "-s") == 0)

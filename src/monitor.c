@@ -78,16 +78,33 @@ void print_entries()
         perror("Failed to open FIFO");
         exit(1);
     }
+
     write(monitor_fd, "PID;PROGRAM;DURATION(ms)\n", 26);
+    char buffer[1024];
+    long start_ms, end_ms, duration_ms;
 
     for (int i = 0; i < numEntries; i++)
     {
-        long start_ms = (executionInfos[i].start_time.tv_sec * 1000) + (executionInfos[i].start_time.tv_usec / 1000);
-        long end_ms = (executionInfos[i].end_time.tv_sec * 1000) + (executionInfos[i].end_time.tv_usec / 1000);
-        long duration_ms = end_ms - start_ms;
+
+        // In case the process is still running, calculate the duration until now
+        if (executionInfos[i].end_time.tv_sec == 0 && executionInfos[i].end_time.tv_usec == 0)
+        {
+            printf("Process with PID %d is still running\n", executionInfos[i].pid);
+            start_ms = (executionInfos[i].start_time.tv_sec * 1000) + (executionInfos[i].start_time.tv_usec / 1000);
+            // Calculate ms from start time until now
+            struct timeval now;
+            gettimeofday(&now, NULL);
+            end_ms = (now.tv_sec * 1000) + (now.tv_usec / 1000);
+            duration_ms = end_ms - start_ms;
+        }
+        else // Process has finished
+        {
+            start_ms = (executionInfos[i].start_time.tv_sec * 1000) + (executionInfos[i].start_time.tv_usec / 1000);
+            end_ms = (executionInfos[i].end_time.tv_sec * 1000) + (executionInfos[i].end_time.tv_usec / 1000);
+            duration_ms = end_ms - start_ms;
+        }
 
         // Notify the client program of each program's execution info
-        char buffer[1024];
         sprintf(buffer, "%d;%s;%ld\n", executionInfos[i].pid, executionInfos[i].command, duration_ms);
         write(monitor_fd, buffer, strlen(buffer));
         memset(buffer, 0, sizeof(buffer)); // Clear the buffer
