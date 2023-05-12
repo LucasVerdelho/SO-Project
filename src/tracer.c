@@ -146,13 +146,16 @@ int main(int argc, char **argv)
         }
     }
 
-    // Create a while(1) loop where the user can enter commands
+    // TODO: Create a while(1) loop where the user can enter commands
     // The commands are:
     // 1. -u <program> [<args>...] - execute a program
     // 2. -s - request the status of programs from server
     // 3. -q - quit the program
     // 4. anything else is ignored and the user is prompted again
 
+    // TODO FIX THE TRACER GETTING STUCK UPON EXECUTING STATUS COMMAND????????????
+    // TODO FIX THE WHILE LOOP ONLY READING PROGRAM NAME AND NOT THE ARGUMENTS
+    // TODO POSSIBLY IMPLEMENT PIPELINE EXECUTION OF PROGRAMS (at least on startup)
     while (1)
     {
         printf("\nEnter a new command:\n");
