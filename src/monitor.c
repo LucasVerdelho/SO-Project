@@ -60,34 +60,35 @@ void update_entry(int pid, int status)
 
 void print_entries()
 {
+
+    // Check if monitor Fifo exists, else create it
+    if (access(MONITOR_FIFO_PATH, F_OK) == -1)
+    {
+        if (mkfifo(MONITOR_FIFO_PATH, 0666) == -1)
+        {
+            perror("Failed to create FIFO");
+            exit(1);
+        }
+    }
+
+    // Open the monitor FIFO for writing
+    int monitor_fd = open(MONITOR_FIFO_PATH, O_WRONLY);
+    if (monitor_fd == -1)
+    {
+        perror("Failed to open FIFO");
+        exit(1);
+    }
+    write(monitor_fd, "PID;PROGRAM;DURATION(ms)\n", 26);
+
     for (int i = 0; i < numEntries; i++)
     {
         long start_ms = (executionInfos[i].start_time.tv_sec * 1000) + (executionInfos[i].start_time.tv_usec / 1000);
         long end_ms = (executionInfos[i].end_time.tv_sec * 1000) + (executionInfos[i].end_time.tv_usec / 1000);
         long duration_ms = end_ms - start_ms;
 
-
-        // Check if monitor Fifo exists, else create it
-        if (access(MONITOR_FIFO_PATH, F_OK) == -1)
-        {
-            if (mkfifo(MONITOR_FIFO_PATH, 0666) == -1)
-            {
-                perror("Failed to create FIFO");
-                exit(1);
-            }
-        }
-
-        // Open the monitor FIFO for writing
-        int monitor_fd = open(MONITOR_FIFO_PATH, O_WRONLY);
-        if (monitor_fd == -1)
-        {
-            perror("Failed to open FIFO");
-            exit(1);
-        }
-
         // Notify the client program of each program's execution info
         char buffer[1024];
-        sprintf(buffer, "%d;%s;%ld", executionInfos[i].pid, executionInfos[i].command, duration_ms);
+        sprintf(buffer, "pid:%d;program:%s;exec_time%ld\n", executionInfos[i].pid, executionInfos[i].command, duration_ms);
         write(monitor_fd, buffer, strlen(buffer));
         memset(buffer, 0, sizeof(buffer)); // Clear the buffer
 
@@ -118,12 +119,13 @@ int main()
 
     while (1)
     {
-        printf("\nWaiting for client request...\n\n");
+        printf("\nWaiting for client update...\n");
 
         // Read the client's request
         // The structure of a client request is as follows:
         // process ID;program name/status(finish signal)
         char buffer[1024];
+        memset(buffer, 0, sizeof(buffer));
         ssize_t num_bytes = read(tracer_fd, buffer, sizeof(buffer));
         if (num_bytes == -1)
         {
@@ -131,18 +133,16 @@ int main()
             exit(1);
         }
 
-        printf("Received client request: %s\n", buffer);
-
         // Parse the client's request
         int pid;
         char info[256];
         sscanf(buffer, "%d;%s", &pid, info);
 
-        printf("PID: %d, Info: %s", pid, info);
+        printf("Received Update - PID: %d, Info: %s\n", pid, info);
 
         if (strcmp(info, "finished") == 0)
         {
-            printf("Process with PID %d finished\n", pid);
+            // printf("Process with PID %d finished\n", pid);
             update_entry(pid, 0);
         }
         else if (strcmp(info, "status") == 0)
@@ -151,7 +151,7 @@ int main()
         }
         else
         {
-            printf("Process with PID %d started\n", pid);
+            // printf("Process with PID %d started\n", pid);
             insert_entry(pid, info);
         }
         // Reset the buffer

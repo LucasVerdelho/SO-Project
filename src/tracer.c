@@ -35,7 +35,7 @@ void execute_program(char *program_name, char **program_args)
 
     // Notify the server that a program is about to be executed
     char buffer[1024];
-    memset(buffer, 0, sizeof(buffer)); // Clear the buffer
+    memset(buffer, 0, sizeof(buffer)); // Set the buffer to 0
     sprintf(buffer, "%d;%s", pid, program_name);
     write(fd, buffer, strlen(buffer));
 
@@ -132,7 +132,7 @@ int main(int argc, char **argv)
             }
 
             char *program_name = argv[2];
-            char **program_args = &argv[2];
+            char *program_args[] = {program_name, NULL};
 
             execute_program(program_name, program_args);
         }
@@ -142,7 +142,7 @@ int main(int argc, char **argv)
         }
         else
         {
-            printf("No input provided\n");
+            printf("Correct Usage: %s <option> [<args>...]\n", argv[0]);
         }
     }
 
@@ -152,54 +152,75 @@ int main(int argc, char **argv)
     // 2. -s - request the status of programs from server
     // 3. -q - quit the program
     // 4. anything else is ignored and the user is prompted again
+
     while (1)
     {
-        char buffer[1024];
-        memset(buffer, '\0', sizeof(buffer)); // Clear the buffer
-        printf("Enter command:\n");
-        fgets(buffer, sizeof(buffer), stdin);
+        printf("Enter a command: ");
+        char command[100];
+        fgets(command, sizeof(command), stdin);
 
-        // Split the string into tokens
-        char *token = strtok(buffer, " ");
-    
-        // If the token is NULL then the user entered an empty string
-        if (token == NULL)
+        // Remove trailing newline character from the command
+        command[strcspn(command, "\n")] = '\0';
+
+        // Tokenize the command to get the option and arguments
+        char *option = strtok(command, " ");
+        char *program_name = NULL;
+
+        if (option != NULL)
         {
-            continue;
+            if (strcmp(option, "-u") == 0)
+            {
+                program_name = strtok(NULL, " ");
+                if (program_name == NULL)
+                {
+                    printf("Program name is missing\n");
+                    continue; // Go to the next iteration of the loop
+                }
+
+                char *program_args[] = {program_name, NULL};
+
+                pid_t pid = fork();
+                if (pid == -1)
+                {
+                    perror("Failed to fork");
+                    exit(1);
+                }
+                else if (pid == 0)
+                {
+                    // Child process
+                    execute_program(program_name, program_args);
+                    exit(0);
+                }
+                else
+                {
+                    // Parent process
+                    int status;
+                    waitpid(pid, &status, 0);
+                    if (WIFEXITED(status) && WEXITSTATUS(status) == 0)
+                    {
+                        printf("Program execution successful\n");
+                    }
+                    else
+                    {
+                        printf("Program execution failed\n");
+                    }
+                }
+            }
+            else if (strcmp(option, "-s") == 0)
+            {
+                query_running_programs();
+            }
+            else if (strcmp(option, "-q") == 0)
+            {
+                break; // Exit the loop and end the program
+            }
+            else
+            {
+                // Invalid command, prompt again
+                continue; // Go to the next iteration of the loop
+            }
         }
-
-        // If the token is "quit" then exit the program
-        if (strcmp(token, "quit") == 0)
-        {
-            break;
-        }
-
-        // If the token is "status" then query the server for the running programs
-        if (strcmp(token, "status") == 0)
-        {
-            query_running_programs();
-            continue;
-        }
-
-        // If the token is not "quit" or "status" then it must be a program name
-        char *program_name = token;
-
-        // Create an array of strings to hold the program arguments
-        char *program_args[1024];
-
-        // Add the program name to the array of arguments
-        program_args[0] = program_name;
-
-        // Add the rest of the arguments to the array
-        int i = 1;
-        while ((token = strtok(NULL, " ")) != NULL)
-        {
-            program_args[i] = token;
-            i++;
-        }
-
-        // Execute the program
-        execute_program(program_name, program_args);
     }
+
     return 0;
 }
