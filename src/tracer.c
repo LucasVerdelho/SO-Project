@@ -155,7 +155,7 @@ int main(int argc, char **argv)
 
     while (1)
     {
-        printf("Enter a command: ");
+        printf("\nEnter a new command:\n");
         char command[100];
         fgets(command, sizeof(command), stdin);
 

@@ -88,7 +88,7 @@ void print_entries()
 
         // Notify the client program of each program's execution info
         char buffer[1024];
-        sprintf(buffer, "pid:%d;program:%s;exec_time%ld\n", executionInfos[i].pid, executionInfos[i].command, duration_ms);
+        sprintf(buffer, "%d;%s;%ld\n", executionInfos[i].pid, executionInfos[i].command, duration_ms);
         write(monitor_fd, buffer, strlen(buffer));
         memset(buffer, 0, sizeof(buffer)); // Clear the buffer
 
