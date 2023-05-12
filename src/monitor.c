@@ -95,6 +95,7 @@ void print_entries()
         printf("\nPID: %d, Command: %s\n", executionInfos[i].pid, executionInfos[i].command);
         printf("Duration: %ld milliseconds\n", duration_ms);
     }
+    close(monitor_fd);
 }
 
 int main()

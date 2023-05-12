@@ -88,24 +88,34 @@ void query_running_programs()
     write(fd, buffer, strlen(buffer));
     close(fd);
 
-    // Open FIFO for reading the response from the server
-    fd = open(MONITOR_FIFO_PATH, O_RDONLY);
-    if (fd == -1)
+    // Check if monitor FIFO exists, else create it
+    if (access(MONITOR_FIFO_PATH, F_OK) == -1)
     {
-        perror("Failed to open FIFO");
+        if (mkfifo(MONITOR_FIFO_PATH, 0666) == -1)
+        {
+            perror("Failed to create FIFO");
+            exit(1);
+        }
+    }
+
+    // Open the monitor FIFO for reading
+    int monitor_fd = open(MONITOR_FIFO_PATH, O_RDONLY);
+    if (monitor_fd == -1)
+    {
+        perror("Failed to open FIFO for reading");
         exit(1);
     }
 
-    // Read and print the response from the server
+    // Read and print the entries from the monitor FIFO
     memset(buffer, 0, sizeof(buffer)); // Clear the buffer
     ssize_t num_bytes;
-    while ((num_bytes = read(fd, buffer, sizeof(buffer))) > 0)
+    while ((num_bytes = read(monitor_fd, buffer, sizeof(buffer))) > 0)
     {
         write(STDOUT_FILENO, buffer, num_bytes);
     }
-
-    // Close FIFO
-    close(fd);
+    printf("status command finished\n");
+    // Close the monitor FIFO
+    close(monitor_fd);
 }
 
 int main(int argc, char **argv)
