@@ -118,54 +118,87 @@ void query_running_programs()
     close(monitor_fd);
 }
 
+// TODO POSSIBLY IMPLEMENT PIPELINE EXECUTION OF PROGRAMS (at least on startup)
+
+// The main function will take in arguments from the command line
+// The commands are:
+// 1. -u <program> [<args>...] - execute a program
+// 2. -s - request the status of programs from server
+// 3. -q - quit the program
+// 4. anything else is ignored and the user is prompted again
 int main(int argc, char **argv)
 {
     // Check number of arguments passed to determine the option selected
-
-    // Invalid number of arguments will print the correct usage and go to loop
     if (argc < 2)
     {
         printf("Correct Usage: %s <option> [<args>...]\n", argv[0]);
+        exit(1);
     }
-    else
+
+    // Get the option selected
+    char *option = argv[1];
+
+    // If the option is "-u" then execute the program(s)
+    if (strcmp(option, "-u") == 0)
     {
-        // Get the option selected
-        char *option = argv[1];
-
-        // If the option is "-u" then execute the program(s)
-        if (strcmp(option, "-u") == 0)
+        if (argc < 3)
         {
-            if (argc < 3)
-            {
-                printf("Program name is missing\n");
-                exit(1);
-            }
-
-            char *program_name = argv[2];
-            char *program_args[] = {program_name, NULL};
-
-            execute_program(program_name, program_args);
+            printf("Program name is missing\n");
+            exit(1);
         }
-        else if (strcmp(option, "-s") == 0)
+
+        char *program_name = argv[2];
+        int num_args = argc - 3;
+        char *program_args[num_args + 2];
+
+        program_args[0] = program_name;
+        for (int i = 0; i < num_args; i++)
         {
-            query_running_programs();
+            program_args[i + 1] = argv[i + 3];
+        }
+        program_args[num_args + 1] = NULL;
+
+        pid_t pid = fork();
+        if (pid == -1)
+        {
+            perror("Failed to fork");
+            exit(1);
+        }
+        else if (pid == 0)
+        {
+            // Child process
+            execute_program(program_name, program_args);
         }
         else
         {
-            printf("Correct Usage: %s <option> [<args>...]\n", argv[0]);
+            // Parent process
+            int status;
+            waitpid(pid, &status, 0);
+            if (WIFEXITED(status) && WEXITSTATUS(status) == 0)
+            {
+                printf("Program execution successful\n");
+            }
+            else
+            {
+                printf("Program execution failed\n");
+            }
         }
     }
+    else if (strcmp(option, "-s") == 0)
+    {
+        query_running_programs();
+    }
+    else if (strcmp(option, "-q") == 0)
+    {
+        // Exit the program
+        return 0;
+    }
+    else
+    {
+        printf("Invalid option: %s\n", option);
+        exit(1);
+    }
 
-    // TODO: Create a while(1) loop where the user can enter commands
-    // The commands are:
-    // 1. -u <program> [<args>...] - execute a program
-    // 2. -s - request the status of programs from server
-    // 3. -q - quit the program
-    // 4. anything else is ignored and the user is prompted again
-
-    // TODO FIX THE TRACER GETTING STUCK UPON EXECUTING STATUS COMMAND????????????
-    // TODO FIX THE WHILE LOOP ONLY READING PROGRAM NAME AND NOT THE ARGUMENTS
-    // TODO POSSIBLY IMPLEMENT PIPELINE EXECUTION OF PROGRAMS (at least on startup)
     while (1)
     {
         printf("\nEnter a new command:\n");
@@ -178,6 +211,7 @@ int main(int argc, char **argv)
         // Tokenize the command to get the option and arguments
         char *option = strtok(command, " ");
         char *program_name = NULL;
+        char *program_args[10]; // Assuming a maximum of 10 program arguments
 
         if (option != NULL)
         {
@@ -187,10 +221,18 @@ int main(int argc, char **argv)
                 if (program_name == NULL)
                 {
                     printf("Program name is missing\n");
-                    continue; // Go to the next iteration of the loop
+                    continue;
                 }
 
-                char *program_args[] = {program_name, NULL};
+                program_args[0] = program_name;
+                int arg_index = 1;
+                char *arg = strtok(NULL, " ");
+                while (arg != NULL)
+                {
+                    program_args[arg_index++] = arg;
+                    arg = strtok(NULL, " ");
+                }
+                program_args[arg_index] = NULL;
 
                 pid_t pid = fork();
                 if (pid == -1)
@@ -202,7 +244,6 @@ int main(int argc, char **argv)
                 {
                     // Child process
                     execute_program(program_name, program_args);
-                    exit(0);
                 }
                 else
                 {
@@ -225,7 +266,8 @@ int main(int argc, char **argv)
             }
             else if (strcmp(option, "-q") == 0)
             {
-                break; // Exit the loop and end the program
+                // Exit the loop and end the program
+                break;
             }
             else
             {
