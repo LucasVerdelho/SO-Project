@@ -13,5 +13,6 @@ bin/monitor: src/monitor.c
 	gcc $(CFLAGS) -o $@ $<
 
 clean:
-	rm -rf bin/*
+	rm -rf bin/* tmp/*
+	
 
