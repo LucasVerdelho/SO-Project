@@ -11,7 +11,7 @@
 #define TRACER_FIFO_PATH "../tmp/tracer_fifo"
 #define MONITOR_FIFO_PATH "../tmp/monitor_fifo"
 
-void execute_program(char *program_name, char **program_args)
+void execute_program(char *program_name, char **program_args, int client_id)
 {
     // Check if fifo on TRACER_FIFO_PATH exists and if not create it
     if (access(TRACER_FIFO_PATH, F_OK) == -1)
@@ -31,7 +31,11 @@ void execute_program(char *program_name, char **program_args)
         exit(1);
     }
 
+    // Notify the User about the program execution
     int pid = getpid();
+    char notify_buffer[128];
+    sprintf(notify_buffer, "Executing %s with PID %d\n", program_name, pid);
+    write(STDOUT_FILENO, notify_buffer, strlen(notify_buffer));
 
     // Get the current timestamp for program start
     struct timeval start_time;
@@ -128,7 +132,6 @@ void query_running_programs()
 }
 
 // TODO POSSIBLY IMPLEMENT PIPELINE EXECUTION OF PROGRAMS (at least on startup)
-// TODO IMPROVE THE TRACER INTERFACE RANDOM MSGS APPEAR OUT OF NOWHERE
 
 // The main function will take in arguments from the command line
 // The commands are:
@@ -138,6 +141,32 @@ void query_running_programs()
 // 4. anything else is ignored and the user is prompted again
 int main(int argc, char **argv)
 {
+    // int random_client_id = rand() % 1000;
+
+    // // Open the tracer fifo to notify the server that a new client has connected
+    // // Check if it exists, else create it
+    // if (access(TRACER_FIFO_PATH, F_OK) == -1)
+    // {
+    //     if (mkfifo(TRACER_FIFO_PATH, 0666) == -1)
+    //     {
+    //         perror("Failed to create FIFO");
+    //         exit(1);
+    //     }
+    // }
+
+    // // Open the tracer FIFO for writing
+    // int fd = open(TRACER_FIFO_PATH, O_WRONLY);
+    // if (fd == -1)
+    // {
+    //     perror("Failed to open FIFO");
+    //     exit(1);
+    // }
+
+    // // Notify the server that a new client has connected
+    // char notify_buffer[32];
+    // sprintf(notify_buffer, "%d;connected", random_client_id);
+    // write(fd, notify_buffer, strlen(notify_buffer));
+
     // Check number of arguments passed to determine the option selected
     if (argc < 2)
     {
@@ -176,24 +205,9 @@ int main(int argc, char **argv)
         }
         else if (pid == 0)
         {
-            // Child process
-            execute_program(program_name, program_args);
+
+            execute_program(program_name, program_args, random_client_id);
             exit(0);
-        }
-        else
-        {
-            // TODO TESTING PIPELINE EXECUTION
-            // // Parent process
-            // int status;
-            // waitpid(pid, &status, 0);
-            // if (WIFEXITED(status) && WEXITSTATUS(status) == 0)
-            // {
-            //     printf("Program execution successful\n");
-            // }
-            // else
-            // {
-            //     printf("Program execution failed\n");
-            // }
         }
     }
     else if (strcmp(option, "-s") == 0)
@@ -202,7 +216,6 @@ int main(int argc, char **argv)
     }
     else if (strcmp(option, "-q") == 0)
     {
-        // Exit the program
         return 0;
     }
     else
@@ -211,6 +224,7 @@ int main(int argc, char **argv)
         exit(1);
     }
 
+    // Main loop to read commands from the user and execute them
     while (1)
     {
         // Sleep for 100 milliseconds
@@ -258,23 +272,13 @@ int main(int argc, char **argv)
                 else if (pid == 0)
                 {
                     // Child process
-                    execute_program(program_name, program_args);
+                    execute_program(program_name, program_args, random_client_id);
                     exit(0);
                 }
                 else
                 {
-                    // TODO TESTING PIPELINE EXECUTION
-                    // // Parent process
-                    // int status;
-                    // waitpid(pid, &status, 0);
-                    // if (WIFEXITED(status) && WEXITSTATUS(status) == 0)
-                    // {
-                    //     printf("Program execution successful\n");
-                    // }
-                    // else
-                    // {
-                    //     printf("Program execution failed\n");
-                    // }
+                    // Parent process
+                    continue; // Go to the next iteration of the loop
                 }
             }
             else if (strcmp(option, "-s") == 0)
@@ -289,7 +293,7 @@ int main(int argc, char **argv)
             else
             {
                 // Invalid command, prompt again
-                continue; // Go to the next iteration of the loop
+                continue;
             }
         }
     }
