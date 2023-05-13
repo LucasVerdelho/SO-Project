@@ -11,7 +11,7 @@
 #define TRACER_FIFO_PATH "../tmp/tracer_fifo"
 #define MONITOR_FIFO_PATH "../tmp/monitor_fifo"
 
-void execute_program(char *program_name, char **program_args, int client_id)
+void execute_program(char *program_name, char **program_args)
 {
     // Check if fifo on TRACER_FIFO_PATH exists and if not create it
     if (access(TRACER_FIFO_PATH, F_OK) == -1)
@@ -141,31 +141,6 @@ void query_running_programs()
 // 4. anything else is ignored and the user is prompted again
 int main(int argc, char **argv)
 {
-    // int random_client_id = rand() % 1000;
-
-    // // Open the tracer fifo to notify the server that a new client has connected
-    // // Check if it exists, else create it
-    // if (access(TRACER_FIFO_PATH, F_OK) == -1)
-    // {
-    //     if (mkfifo(TRACER_FIFO_PATH, 0666) == -1)
-    //     {
-    //         perror("Failed to create FIFO");
-    //         exit(1);
-    //     }
-    // }
-
-    // // Open the tracer FIFO for writing
-    // int fd = open(TRACER_FIFO_PATH, O_WRONLY);
-    // if (fd == -1)
-    // {
-    //     perror("Failed to open FIFO");
-    //     exit(1);
-    // }
-
-    // // Notify the server that a new client has connected
-    // char notify_buffer[32];
-    // sprintf(notify_buffer, "%d;connected", random_client_id);
-    // write(fd, notify_buffer, strlen(notify_buffer));
 
     // Check number of arguments passed to determine the option selected
     if (argc < 2)
@@ -206,7 +181,7 @@ int main(int argc, char **argv)
         else if (pid == 0)
         {
 
-            execute_program(program_name, program_args, random_client_id);
+            execute_program(program_name, program_args);
             exit(0);
         }
     }
@@ -272,7 +247,7 @@ int main(int argc, char **argv)
                 else if (pid == 0)
                 {
                     // Child process
-                    execute_program(program_name, program_args, random_client_id);
+                    execute_program(program_name, program_args);
                     exit(0);
                 }
                 else
