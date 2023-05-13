@@ -83,6 +83,8 @@ void print_entries()
     char buffer[1024];
     long start_ms, end_ms, duration_ms;
 
+    long total_duration = 0;
+
     for (int i = 0; i < numEntries; i++)
     {
 
@@ -111,7 +113,11 @@ void print_entries()
 
         printf("PID: %d, Command: %s\n", executionInfos[i].pid, executionInfos[i].command);
         printf("Duration: %ld milliseconds\n\n", duration_ms);
+        total_duration += duration_ms;
     }
+    // Write the total duration to the monitor FIFO
+    sprintf(buffer, "Total runtime: %ld ms\n", total_duration);
+    write(monitor_fd, buffer, strlen(buffer));
     close(monitor_fd);
 }
 
