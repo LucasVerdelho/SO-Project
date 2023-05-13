@@ -22,7 +22,7 @@ typedef struct
 ExecutionInfo executionInfos[MAX_ENTRIES];
 int numEntries = 0;
 
-void insert_entry(int pid, const char *command)
+void insert_entry(int pid, const char *command, struct timeval start_time)
 {
     if (numEntries >= MAX_ENTRIES)
     {
@@ -32,11 +32,11 @@ void insert_entry(int pid, const char *command)
 
     executionInfos[numEntries].pid = pid;
     strncpy(executionInfos[numEntries].command, command, sizeof(executionInfos[numEntries].command));
-    gettimeofday(&executionInfos[numEntries].start_time, NULL);
+    executionInfos[numEntries].start_time = start_time;
     numEntries++;
 }
 
-void update_entry(int pid, int status)
+void update_entry(int pid, int status, struct timeval end_time)
 {
     for (int i = 0; i < numEntries; i++)
     {
@@ -45,7 +45,7 @@ void update_entry(int pid, int status)
             if (status == 0)
             {
                 printf("Process with PID %d exited with status 0\n", pid);
-                gettimeofday(&executionInfos[i].end_time, NULL);
+                executionInfos[i].end_time = end_time;
             }
             else
             {
@@ -141,7 +141,7 @@ int main()
 
         // Read the client's request
         // The structure of a client request is as follows:
-        // process ID;program name/status(finish signal)
+        // process ID;program name/status/finish signal;timestamp
         char buffer[1024];
         memset(buffer, 0, sizeof(buffer));
         ssize_t num_bytes = read(tracer_fd, buffer, sizeof(buffer));
@@ -154,14 +154,21 @@ int main()
         // Parse the client's request
         int pid;
         char info[256];
-        sscanf(buffer, "%d;%s", &pid, info);
+        double timestamp;
+        sscanf(buffer, "%d;%[^;];%lf", &pid, info, &timestamp);
 
-        printf("Received Update - PID: %d, Info: %s\n", pid, info);
+        // Convert the timestamp to timeval structure
+        struct timeval time_val;
+        time_val.tv_sec = (time_t)timestamp;
+        time_val.tv_usec = (suseconds_t)((timestamp - time_val.tv_sec) * 1e6);
+
+        // Print the received update
+        printf("Received Update - PID: %d, Info: %s, Timestamp: %ld.%06ld\n",
+               pid, info, time_val.tv_sec, time_val.tv_usec);
 
         if (strcmp(info, "finished") == 0)
         {
-            // printf("Process with PID %d finished\n", pid);
-            update_entry(pid, 0);
+            update_entry(pid, 0, time_val);
         }
         else if (strcmp(info, "status") == 0)
         {
@@ -169,9 +176,9 @@ int main()
         }
         else
         {
-            // printf("Process with PID %d started\n", pid);
-            insert_entry(pid, info);
+            insert_entry(pid, info, time_val);
         }
+
         // Reset the buffer
         memset(buffer, 0, sizeof(buffer));
     }

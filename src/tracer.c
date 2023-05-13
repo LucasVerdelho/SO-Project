@@ -33,14 +33,15 @@ void execute_program(char *program_name, char **program_args)
 
     int pid = getpid();
 
+    // Get the current timestamp for program start
+    struct timeval start_time;
+    gettimeofday(&start_time, NULL);
+
     // Notify the server that a program is about to be executed
     char buffer[1024];
     memset(buffer, 0, sizeof(buffer)); // Set the buffer to 0
-    sprintf(buffer, "%d;%s", pid, program_name);
+    sprintf(buffer, "%d;%s;%ld.%06ld", pid, program_name, start_time.tv_sec, start_time.tv_usec);
     write(fd, buffer, strlen(buffer));
-
-    // // Notify the user of the program's PID
-    // printf("Executing program with PID: %d\n", pid);
 
     if (fork() == 0)
     {
@@ -48,8 +49,14 @@ void execute_program(char *program_name, char **program_args)
         if (execvp(program_name, program_args) == -1)
         {
             perror("Failed to execute program");
+
+            // Get the current timestamp for program finish
+            struct timeval finish_time;
+            gettimeofday(&finish_time, NULL);
+
+            // Notify the server that the program has finished with an error
             memset(buffer, 0, sizeof(buffer)); // Clear the buffer
-            sprintf(buffer, "%d;finished", pid);
+            sprintf(buffer, "%d;finished;%ld.%06ld", pid, finish_time.tv_sec, finish_time.tv_usec);
             write(fd, buffer, strlen(buffer));
             exit(1);
         }
@@ -58,9 +65,13 @@ void execute_program(char *program_name, char **program_args)
     {
         wait(NULL);
 
+        // Get the current timestamp for program finish
+        struct timeval finish_time;
+        gettimeofday(&finish_time, NULL);
+
         // Write to the FIFO again to notify the server that the program has terminated
         memset(buffer, 0, sizeof(buffer)); // Clear the buffer
-        sprintf(buffer, "%d;finished", pid);
+        sprintf(buffer, "%d;finished;%ld.%06ld", pid, finish_time.tv_sec, finish_time.tv_usec);
         write(fd, buffer, strlen(buffer));
     }
 
