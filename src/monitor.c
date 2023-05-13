@@ -109,8 +109,8 @@ void print_entries()
         write(monitor_fd, buffer, strlen(buffer));
         memset(buffer, 0, sizeof(buffer)); // Clear the buffer
 
-        printf("\nPID: %d, Command: %s\n", executionInfos[i].pid, executionInfos[i].command);
-        printf("Duration: %ld milliseconds\n", duration_ms);
+        printf("PID: %d, Command: %s\n", executionInfos[i].pid, executionInfos[i].command);
+        printf("Duration: %ld milliseconds\n\n", duration_ms);
     }
     close(monitor_fd);
 }

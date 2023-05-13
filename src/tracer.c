@@ -117,6 +117,7 @@ void query_running_programs()
 }
 
 // TODO POSSIBLY IMPLEMENT PIPELINE EXECUTION OF PROGRAMS (at least on startup)
+// TODO IMPROVE THE TRACER INTERFACE RANDOM MSGS APPEAR OUT OF NOWHERE
 
 // The main function will take in arguments from the command line
 // The commands are:
@@ -166,6 +167,7 @@ int main(int argc, char **argv)
         {
             // Child process
             execute_program(program_name, program_args);
+            exit(0);
         }
         else
         {
@@ -246,6 +248,7 @@ int main(int argc, char **argv)
                 {
                     // Child process
                     execute_program(program_name, program_args);
+                    exit(0);
                 }
                 else
                 {
@@ -261,7 +264,6 @@ int main(int argc, char **argv)
                     // {
                     //     printf("Program execution failed\n");
                     // }
-                    printf("Program execution successful\n");
                 }
             }
             else if (strcmp(option, "-s") == 0)
