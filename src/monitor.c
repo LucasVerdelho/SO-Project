@@ -36,21 +36,14 @@ void insert_entry(int pid, const char *command, struct timeval start_time)
     numEntries++;
 }
 
-void update_entry(int pid, int status, struct timeval end_time)
+void update_entry(int pid, struct timeval end_time)
 {
     for (int i = 0; i < numEntries; i++)
     {
         if (executionInfos[i].pid == pid)
         {
-            if (status == 0)
-            {
-                printf("Process with PID %d exited with status 0\n", pid);
-                executionInfos[i].end_time = end_time;
-            }
-            else
-            {
-                printf("Process with PID %d exited with non-zero status\n", pid);
-            }
+            printf("Process with PID %d exited with status 0\n", pid);
+            executionInfos[i].end_time = end_time;
             return;
         }
     }
@@ -174,7 +167,7 @@ int main()
 
         if (strcmp(info, "finished") == 0)
         {
-            update_entry(pid, 0, time_val);
+            update_entry(pid, time_val);
         }
         else if (strcmp(info, "status") == 0)
         {

@@ -131,8 +131,6 @@ void query_running_programs()
     close(monitor_fd);
 }
 
-// TODO IMPLEMENT PIPELINE EXECUTION OF PROGRAMS (at least on startup)
-
 // The main function will take in arguments from the command line
 // The commands are:
 // 1. -u <program> [<args>...] - execute a program
