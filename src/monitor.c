@@ -54,16 +54,6 @@ void update_entry(int pid, struct timeval end_time)
 void print_entries()
 {
 
-    // Check if monitor Fifo exists, else create it
-    if (access(MONITOR_FIFO_PATH, F_OK) == -1)
-    {
-        if (mkfifo(MONITOR_FIFO_PATH, 0666) == -1)
-        {
-            perror("Failed to create FIFO");
-            exit(1);
-        }
-    }
-
     // Open the monitor FIFO for writing
     int monitor_fd = open(MONITOR_FIFO_PATH, O_WRONLY);
     if (monitor_fd == -1)
