@@ -131,7 +131,7 @@ void query_running_programs()
     close(monitor_fd);
 }
 
-// TODO POSSIBLY IMPLEMENT PIPELINE EXECUTION OF PROGRAMS (at least on startup)
+// TODO IMPLEMENT PIPELINE EXECUTION OF PROGRAMS (at least on startup)
 
 // The main function will take in arguments from the command line
 // The commands are:
@@ -180,7 +180,7 @@ int main(int argc, char **argv)
         }
         else if (pid == 0)
         {
-
+            // Child process
             execute_program(program_name, program_args);
             exit(0);
         }
