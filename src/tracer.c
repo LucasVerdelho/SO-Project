@@ -158,7 +158,6 @@ int main(int argc, char **argv)
         if (argc < 3)
         {
             printf("Program name is missing\n");
-            exit(1);
         }
 
         char *program_name = argv[2];
